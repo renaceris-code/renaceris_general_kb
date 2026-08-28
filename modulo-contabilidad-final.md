@@ -33,6 +33,21 @@ Sistema de reportes de ingresos, registro de egresos, control de caja, saldos e 
 - Excel/CSV: listado de pagos (fecha, comprobante, monto, forma de pago, paciente/DNI, sede, servicio) y reporte "puente" alineado a la plantilla de SIBI.
 - PDF: resumen de caja / balance diario por sede.
 
+**Plantilla SIBI validada con el reporte de junio 2026**
+- Oficina -> sede del pago/comprobante.
+- Usuario -> usuario que creó la cita u orden.
+- Tipo de documento / código / serie / correlativo -> normalizados para `Boleta`, `Factura`, `Nota de venta` y `Nota de crédito`.
+- Documento del cliente -> DNI.
+- Datos del cliente -> nombre y apellido.
+- Dirección del cliente -> teléfono de contacto en el puente actual, porque el reporte de SIBI usa ese dato en esa columna.
+- Operaciones gravadas / exoneradas / inafectas / gratuitas -> hoy el puente usa exoneradas como total principal y deja los demás en cero.
+- Total IGV / ICBPER / otros cargos / descuento global -> cero mientras no exista desglose fiscal en el sistema.
+- Estado SUNAT -> derivado del tipo de documento y del estado del registro.
+- Tipo de moneda -> `Soles`.
+- Observaciones -> código de transacción o nota interna del pago.
+- Estado de pago -> `Pagado` o `Pendiente`.
+- DAM -> vacío por ahora.
+
 **7. Inventarios**
 - Dos almacenes: productos de venta al público (fajas, proteínas) e insumos internos de cirugía.
 - Control de stock, salida de insumos por cirugía y reingreso de sobrantes.
