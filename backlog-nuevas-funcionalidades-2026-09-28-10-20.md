@@ -162,7 +162,7 @@ Se descartó guardar la sección en la cita (snapshot). Con la sección derivada
 
 | Tabla | Contenido |
 |---|---|
-| `pos_product_categories`, `pos_products` | Catálogo sin stock: nombre, categoría, precio referencial, activo. Solo el admin lo edita. |
+| `pos_product_categories`, `pos_products` | Catálogo sin stock: nombre, categoría, precio referencial, activo. **Por sede desde la migración 049** (`pos_products.location_id`): cada sede tiene su catálogo y su "Productos diversos"; el admin edita todas, el admin de sede las suyas. Las categorías son compartidas y solo las edita el admin. |
 | `pos_sales` | Venta de productos: sede, fecha, vendedor, cliente opcional (DNI/nombre), total, medio de pago, nº de operación, estado (`registrada`/`anulada` con motivo). |
 | `pos_sale_items` | Producto, cantidad, precio unitario (editable, precio referencial por defecto), subtotal. |
 | `pos_cash_closures` | Sede, fecha, responsable, totales esperados por medio de pago (servicios + productos), efectivo declarado, diferencia, observación, estado `abierto → cerrado → validado/rechazado`, revisor, `accounting_income_id` al validarse. Un cierre por sede y recepcionista por día. |
