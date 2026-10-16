@@ -17,7 +17,7 @@
 | F1 | Historia clínica: secciones 01 No quirúrgica / 02 Quirúrgica | Media | 2 días | 28/09 | **30/09** ✅ implementado 29/09 | Servicios marcados por la clínica (D2) |
 | F2 | Punto de venta para recepción + cierre de caja (incluye F3b e ingresos mínimos) | Alta | 6 días | 06/10 | **14/10** (QA 15/10) | ✅ implementado 06/10, pendiente de despliegue |
 | F3b | Voucher en ventas de productos | Baja | incluido en F2 | 06/10 | **14/10** | ✅ con F2 |
-| F3a | Voucher (captura Yape/transferencia) en pagos de citas | Media-baja | 2 días | después de F2 | por definir | Reutiliza `payment_evidences` (columna `payment_id`) |
+| F3a | Voucher (captura Yape/transferencia) en pagos de citas | Media-baja | 2 días | 07/10 | ✅ implementado, pendiente de despliegue | Reutiliza `payment_evidences` (columna `payment_id`), también en órdenes |
 | F5 | Ingresos Sprint 2 (modal de ingresos externos + contrapartes) | Media | 3 días | después de F2 | por definir | Extiende `accounting_incomes` de la mig. 048; D5 |
 | F4 | Códigos contables y conceptos de gasto | Baja | 2 días | 19/10 | **20/10** | **Bloqueado:** catálogo de la clínica (D8) |
 
@@ -45,7 +45,7 @@ Cada decisión tiene una fecha límite: si no llega, se implementa el valor **po
 | D3 | ~~Paciente atendido en una sede y operado en otra~~ | ✅ **Resuelto 29/09:** la sede de la HC solo indica dónde fue la primera cita (quirúrgica o no) y es permanente. El paciente no está afiliado a ninguna sede y conserva su HC: `SHCO-000123-02` aunque se opere en Lima. | F1 | — |
 | D4 | ~~Movimientos internos: ¿quién valida?~~ | ✅ **Resuelto 06/10:** valida **el que recibe el dinero o el contador** (basta uno de los dos; el admin siempre puede; nunca el autor). Aplicado ya al cierre del POS: valida el responsable de la caja general de la sede o el contador de la sede. Para transferencias internas se implementa con F5. | F2, F5 | — |
 | D5 | Un ingreso externo pagado por transferencia (p. ej. alquiler depositado en BCP Huánuco), ¿se registra en el banco o en la caja general? | Se permite registrar en la caja general **y** en los bancos de las sedes Huánuco, Lima y Pucallpa. | F5 | 02/10 |
-| D6 | ~~En el cierre del POS, ¿los cobros por Yape/transferencia van a la caja general o al banco?~~ | ✅ **Resuelto 06/10 (preliminar):** solo el **efectivo** entra a la caja general de la sede (CAJA HUANUCO / PUCALLPA / LIMA). Yape, Plin, transferencia y tarjeta quedan **"por definir"** y el contador les asigna la caja o banco. | F2 | — |
+| D6 | ~~En el cierre del POS, ¿los cobros por Yape/transferencia van a la caja general o al banco?~~ | ✅ **Confirmado 07/10:** efectivo → CAJA SEDE; Yape {sede real} → BCP de la sede; Plin {sede real} y tarjeta → BBVA de la sede; transferencia → BCP SEDE o BBVA SEDE, seleccionado al cobrar. La asignación contable ocurre al validar el cierre. Las transferencias históricas sin banco permanecen por definir. | F2 | — |
 | D7 | ~~Catálogo de productos que vende recepción~~ | ✅ **Resuelto 06/10:** mientras no haya inventario (~2 semanas) se vende con el producto genérico **"Productos diversos"**, precio libre y descripción obligatoria. La venta se guarda con líneas y pagos desde el día 1, así que el inventario se suma sin migrar ventas. | F2 | — |
 | D8 | Plan de códigos contables y conceptos de gasto. | Sin valor por defecto: F4 no arranca sin la lista. | F4 | 09/10 |
 | D9 | ~~¿El contador puede ver los vouchers?~~ | ✅ **Resuelto 06/10:** sí, el contador ve todo, vouchers incluidos, y es quien resuelve los ingresos por definir (asigna o corrige su destino). | F2, F3 | — |
@@ -118,7 +118,7 @@ Se descartó guardar la sección en la cita (snapshot). Con la sección derivada
 
 - Tabla `payment_evidences` (`id`, `payment_id` o `pos_sale_id`, `storage_path`, `mime_type`, `size_bytes`, `uploaded_by`, `created_at`), con CHECK de exactamente un padre.
 - Bucket privado `payment-evidence`; JPG, PNG, WEBP o PDF, máx. 5 MB, compresión de imágenes en el navegador.
-- **Obligatorio** cuando el medio de pago es Yape, Plin o transferencia; opcional en efectivo y tarjeta.
+- **Opcional en citas y órdenes** para todos los métodos; puede adjuntarse después. En productos POS sigue siendo obligatorio antes del cierre para Yape, Plin y transferencia.
 - Visibilidad según D9.
 
 ### 4.3 Tareas
@@ -126,9 +126,9 @@ Se descartó guardar la sección en la cita (snapshot). Con la sección derivada
 | ID | Tarea | Día |
 |---|---|---|
 | PAG-01 | Migración 048, bucket privado y servicio de evidencias genérico (extraído del de egresos). | 01/10 |
-| PAG-02 | Backend: subir, listar y firmar URL en los pagos de citas y órdenes de servicio (`appointments.service.ts`); validar obligatoriedad por medio de pago. | 01/10 |
+| PAG-02 | Backend: subir, listar y firmar URL en los pagos de citas y órdenes de servicio (`appointments.service.ts`); validar formato, tamaño y permisos; voucher opcional en citas/órdenes. | 01/10 |
 | PAG-03 | Frontend: campo "Adjuntar captura" con vista previa en el registro de pago de citas; icono de voucher en el historial de pagos. | 02/10 |
-| PAG-04 | Tests de obligatoriedad, tamaño/formato y permisos. | 02/10 |
+| PAG-04 | Tests de tamaño/formato, permisos y obligatoriedad de productos POS. | 02/10 |
 | PAG-05 (F3b) | Mismo componente en el cobro de productos del POS. | 15/10 |
 
 ---
@@ -146,7 +146,7 @@ Se descartó guardar la sección en la cita (snapshot). Con la sección derivada
 > - **Validación (D4).** Valida el responsable de la caja general de la sede, el contador de la sede o el admin; nunca quien cerró. RPC `validate_pos_cash_closure` en una transacción: efectivo declarado → `accounting_incomes` asignado a la caja general (`accounting_accounts.accepts_external_income`, editable en **Cuentas**); cada cobro no en efectivo → `accounting_incomes` **por definir**.
 > - **Contabilidad.** Pestaña **Por definir** (contador/admin asignan o corrigen la caja o banco de la sede, en bloque, viendo el voucher). El saldo por cuenta suma los ingresos asignados; las ventas de productos entran al resumen de ingresos.
 > - **PDF** del reporte y del cierre en el frontend (`jspdf`, igual que Reportes), no en el backend.
-> - **Pendiente conocido:** cobros de citas creados por RPC de órdenes/proformas sin `created_by` no entran en ningún cierre (el reporte los muestra como "sin registrar quién cobró").
+> - **Corregido 07/10:** los anticipos registrados al aceptar proformas y crear órdenes guardan `payments.created_by` en la misma RPC. Los pagos posteriores ya guardaban el cobrador. Los históricos sin actor siguen pendientes de identificar con evidencia; no se inventa una recepcionista. Ver [diagnóstico y despliegue](fix-pos-pagos-2026-10-07.md).
 
 ### 5.1 Alcance
 
@@ -312,3 +312,19 @@ Si el catálogo no llega el 09/10, el deadline se corre dos días hábiles desde
 5. **Cuentas receptoras de cobros:** los pagos de citas aún no registran a qué caja o banco entran. El cierre del POS es el primer puente hacia la caja general; el resto sigue en el Sprint 3 contable.
 6. **Truncamiento a 1000 filas** en resumen y reportes (pendiente de Sprint 3): el reporte del POS se pagina desde el inicio.
 7. **Feriado 08/10:** sin holgura en la semana 2. Si F5 se atrasa, F2 se corre al 19/10 y F4 al 21–22/10.
+
+
+## Correcciones y pendientes aplicados — 07/10/2026
+
+- Reparación incremental en `renaceris_backend/scripts/049_repair_pos_and_reception_payments.sql`, después de 048: agrega `surplus_reason` y `accounting_incomes.kind` a instalaciones previas, actualiza RPC y recarga PostgREST.
+- Captura/voucher con vista previa en cita nueva, detalle de cita y Gestión de Órdenes. Los anticipos de paquetes quedan vinculados a la cita y la orden. Si el archivo falla, el pago queda registrado y el historial permite adjuntarlo después.
+- Yape y Plin separados; transferencia pide BCP o BBVA de la sede. Efectivo oculta código de transacción y se registra sin código ni banco.
+- El cierre exige vouchers de productos (Yape/Plin/transferencia); los de citas y órdenes son opcionales. Los cierres históricos usan sus importes persistidos y los pagos cerrados no se pueden editar/eliminar. Contabilidad rechaza reasignaciones incompatibles con el destino confirmado.
+- Revisión mediante subagente de POS/contabilidad completada; hallazgos corregidos. Detalles y consulta de históricos: [fix-pos-pagos-2026-10-07.md](fix-pos-pagos-2026-10-07.md).
+
+### Ajustes posteriores de pagos — 07/10/2026
+
+- Los tres flujos de citas y POS muestran Yape/Plin con sede real, efectivo sin código de transacción y transferencia con selección BCP/BBVA. Tarjeta se dirige a BBVA de la sede.
+- Voucher opcional en citas/órdenes, preview grande y responsiva de archivos seleccionados o guardados, con apertura en tamaño completo. Puede adjuntarse posteriormente.
+- Recepción solo puede editar/eliminar sus propios pagos en los primeros 30 minutos; se valida en UI, backend y SQL. Adjuntar voucher no modifica los datos financieros del pago.
+- Aplicar `050_card_destination_and_payment_edit_window.sql` después de 049 y reiniciar el backend. Migraciones remotas pendientes de ejecución; validación local completada.
