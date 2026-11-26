@@ -11,9 +11,10 @@ Esta es la referencia para no volver a confundir la sede de la historia clínica
 
 1. **Una sola historia clínica (HC) por paciente.** Formato `SHCO-000123` (Huánuco), `SLIM-000123` (Lima), `SPUC-00123` (Pucallpa).
 2. **La sede del prefijo solo indica dónde fue la primera cita elegible del paciente**, quirúrgica o no:
-   - Primera cita elegible: la primera consulta o reevaluación (en cualquier posición, quirúrgica o no) o, solo si fue la primera cita del paciente, un tratamiento vinculado a un tratamiento previo (legacy/externo). Desde la migración 091, una reevaluación abre la HC aunque antes hubiera procedimientos directos.
-   - El procedimiento directo nunca abre la HC.
+   - Primera cita elegible (desde la migración 091): la primera cita que pasa por una consulta, en cualquier posición y quirúrgica o no. Es decir, una **consulta**, o un **tratamiento o reevaluación** de una orden de **proforma** (indicada en consulta) o de un **tratamiento previo** (orden `legacy_manual`, episodio legacy/externo).
+   - **No abre la HC lo aplicado sin consulta:** el procedimiento directo ni las sesiones o reevaluaciones de su paquete de venta directa (orden `direct_sale`).
    - Se fija una vez y es **permanente**. Queda guardada en `patients.first_location_id`.
+   - **Única excepción, la eliminación definitiva de citas:** si al paciente ya no le queda ninguna cita que abra HC (p. ej. una consulta creada por error que debió ser procedimiento directo), la HC se retira. El número no se reutiliza: si después llega una consulta real, recibe uno nuevo. Cancelar una cita no la retira.
 3. **El paciente no está afiliado a ninguna sede.** Se atiende en cualquier sede y conserva siempre la misma HC. Ningún permiso ni regla de agenda debe **bloquear** pacientes por la sede de su HC.
    - Sí se permite un **filtro de vista** en la lista de Pacientes, "Sede de 1.ª atención": la sede de la HC (`first_location_id`) o, si el paciente aún no tiene HC (solo procedimientos directos), la sede de su primera cita.
    - El filtro arranca en la sede del usuario (Huánuco si ve varias) y siempre ofrece "Todos". Es una comodidad, no una restricción de acceso.
@@ -33,14 +34,16 @@ Esta es la referencia para no volver a confundir la sede de la historia clínica
 | Luego se opera en Lima | Misma HC `SHCO-000123`; se abre la sección 02: `SHCO-000123-02` |
 | Primera cita: consulta quirúrgica en Pucallpa | HC `SPUC-00042`, solo sección 02 |
 | Solo tiene una cirugía cancelada | Sin sección abierta |
-| Entra por procedimientos directos (masajes) y luego se reevalúa de una cirugía previa | Sin HC mientras solo tenga procedimientos directos; la reevaluación le asigna `SHCO-…` |
+| Entra por procedimientos directos (masajes) y luego se reevalúa o se trata de una cirugía previa | Sin HC mientras solo tenga procedimientos directos; la reevaluación o sesión del tratamiento previo le asigna `SHCO-…` |
+| Compra un paquete de masajes por venta directa, sin consulta | Sin HC, aunque se agende sus sesiones o una reevaluación del paquete |
+| Se le creó una consulta por error y solo tiene procedimientos directos | Al eliminar definitivamente la consulta se retira la HC; su número queda sin usar |
 | La clínica marca "Rinoplastia" como quirúrgica después | Sus citas pasan a la sección 02; ningún número cambia |
 
 ## 3. Dónde está en el código
 
 | Pieza | Ubicación |
 |---|---|
-| Numeración y sede de la HC | `renaceris_backend/migrations/045_…`, `046_clinical_records_first_consultation.sql`, `091_clinical_record_on_reevaluation.sql` (reevaluación + backfill) |
+| Numeración y sede de la HC | `renaceris_backend/migrations/045_…`, `046_clinical_records_first_consultation.sql`, `091_clinical_record_opening_and_release.sql` (apertura, retiro al eliminar y backfill) |
 | Marca quirúrgica y vista de secciones | `renaceris_backend/migrations/047_clinical_record_sections.sql` |
 | Secciones en la API de pacientes | `renaceris_backend/src/patients/clinical-record-sections.ts` |
 | Marca en Servicios | `renaceris_backend/src/services/services.service.ts` (`update`) |
